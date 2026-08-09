@@ -508,3 +508,333 @@ def process_verification_video(
 
 
     return best_name
+
+# 11. ATTENDANCE FUNCTIONS
+# ============================================================
+
+def already_marked_today(name):
+
+
+    today = datetime.now().strftime(
+        '%Y-%m-%d'
+    )
+
+
+    if not os.path.exists(
+        ATTENDANCE_FILE
+    ):
+
+        return False
+
+
+    with open(
+        ATTENDANCE_FILE,
+        'r',
+        newline=''
+    ) as f:
+
+
+        reader = csv.reader(f)
+
+
+        # Skip header
+        next(
+            reader,
+            None
+        )
+
+
+        for row in reader:
+
+            if (
+                len(row) >= 2
+                and
+                row[0] == name
+                and
+                row[1] == today
+            ):
+
+                return True
+
+
+    return False
+
+
+
+def mark_attendance(name):
+
+
+    # Already marked
+    if already_marked_today(
+        name
+    ):
+
+        print()
+        print(
+            "============================================"
+        )
+
+        print(
+            f"⚠️ {name} already marked today."
+        )
+
+        print(
+            "============================================"
+        )
+
+        return
+
+
+    now = datetime.now()
+
+
+    with open(
+        ATTENDANCE_FILE,
+        'a',
+        newline=''
+    ) as f:
+
+
+        writer = csv.writer(
+            f
+        )
+
+
+        writer.writerow([
+            name,
+            now.strftime(
+                '%Y-%m-%d'
+            ),
+            now.strftime(
+                '%H:%M:%S'
+            )
+        ])
+
+
+    print()
+    print(
+        "============================================"
+    )
+    print(
+        "✅ ATTENDANCE MARKED"
+    )
+    print(
+        "============================================"
+    )
+
+
+    print(
+        "Student:",
+        name
+    )
+
+
+    print(
+        "Date:",
+        now.strftime(
+            '%Y-%m-%d'
+        )
+    )
+
+
+    print(
+        "Time:",
+        now.strftime(
+            '%H:%M:%S'
+        )
+    )
+
+
+# ============================================================
+# 12. START VERIFICATION
+# ============================================================
+
+if len(known_names) == 0:
+
+    print()
+    print(
+        "❌ No valid students found."
+    )
+
+    print(
+        "Upload student images first."
+    )
+
+else:
+
+    print()
+    print(
+        "============================================"
+    )
+    print(
+        "START FACE VERIFICATION"
+    )
+    print(
+        "============================================"
+    )
+
+
+    print()
+    print(
+        "Instructions:"
+    )
+
+
+    print(
+        "1. Only ONE person should be visible."
+    )
+
+
+    print(
+        "2. Look directly at the camera."
+    )
+
+
+    print(
+        "3. Slowly move your head LEFT."
+    )
+
+
+    print(
+        "4. Slowly move your head RIGHT."
+    )
+
+
+    print(
+        "5. Keep your face visible."
+    )
+
+
+    print()
+
+
+    # Capture webcam video
+    video_path = capture_webcam_video(
+        filename='verification.webm',
+        duration=8
+    )
+
+
+    print()
+    print(
+        "✅ Webcam video captured."
+    )
+
+
+# ============================================================
+# 13. RUN VERIFICATION
+# ============================================================
+
+if len(known_names) > 0:
+
+    verified_user = (
+        process_verification_video(
+            video_path,
+            known_encodings,
+            known_names
+        )
+    )
+
+
+    print()
+
+
+    if verified_user is not None:
+
+        print(
+            "============================================"
+        )
+
+        print(
+            "🎉 VERIFIED"
+        )
+
+        print(
+            "Student:",
+            verified_user
+        )
+
+        print(
+            "============================================"
+
+
+        )
+
+    else:
+
+        print(
+            "============================================"
+        )
+
+        print(
+            "❌ VERIFICATION FAILED"
+        )
+
+        print(
+            "Attendance will NOT be marked."
+        )
+
+        print(
+            "============================================"
+
+
+        )
+
+
+# ============================================================
+# 14. MARK ATTENDANCE
+# ============================================================
+
+if (
+    len(known_names) > 0
+    and
+    verified_user is not None
+):
+
+    mark_attendance(
+        verified_user
+    )
+
+else:
+
+    print()
+    print(
+        "❌ Attendance NOT marked."
+    )
+
+
+# ============================================================
+# 15. SHOW ATTENDANCE
+# ============================================================
+
+print()
+print(
+    "============================================"
+)
+print(
+    "ATTENDANCE RECORD"
+)
+print(
+    "============================================"
+)
+
+
+if os.path.exists(
+    ATTENDANCE_FILE
+):
+
+    attendance_df = pd.read_csv(
+        ATTENDANCE_FILE
+    )
+
+
+    display(
+        attendance_df
+    )
+
+
+else:
+
+    print(
+        "No attendance records found."
+    )
