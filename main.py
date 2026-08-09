@@ -174,571 +174,666 @@ print(
     len(registered_files)
 )
 
-# ============================================================
-# 6. LOAD AND ENCODE KNOWN FACES
-# ============================================================
-
-def load_known_faces(folder):
-
-    known_encodings = []
-    known_names = []
-
-    print()
-    print("============================================")
-    print("ENCODING KNOWN FACES")
-    print("============================================")
-    print()
-
-
-    for filename in sorted(
-        os.listdir(folder)
-    ):
-
-        if not filename.lower().endswith(
-            ('.jpg', '.jpeg', '.png')
-        ):
-
-            continue
-
-
-        path = os.path.join(
-            folder,
-            filename
-        )
-
-
-        try:
-
-            # Load image
-            image = face_recognition.load_image_file(
-                path
-            )
-
-
-            # Detect faces
-            face_locations = (
-                face_recognition.face_locations(
-                    image
-                )
-            )
-
-
-            # No face
-            if len(face_locations) == 0:
-
-                print(
-                    f"❌ No face found: {filename}"
-                )
-
-                continue
-
-
-            # Multiple faces
-            if len(face_locations) > 1:
-
-                print(
-                    f"❌ Multiple faces found: {filename}"
-                )
-
-                print(
-                    "   Use an image with ONE person."
-                )
-
-                continue
-
-
-            # Face encoding
-            face_encoding = (
-                face_recognition.face_encodings(
-                    image,
-                    face_locations
-                )[0]
-            )
-
-
-            # Student name
-            name = os.path.splitext(
-                filename
-            )[0]
-
-
-            known_encodings.append(
-                face_encoding
-            )
-
-            known_names.append(
-                name
-            )
-
-
-            print(
-                f"✅ Encoded: {name}"
-            )
-
-
-        except Exception as e:
-
-            print(
-                f"❌ Error processing: {filename}"
-            )
-
-            print(
-                "   Error:",
-                e
-            )
-
-
-    return (
-        known_encodings,
-        known_names
-    )
-
-
-known_encodings, known_names = (
-    load_known_faces(
-        KNOWN_FACES_DIR
-    )
-)
-
-
-print()
-print("============================================")
-print(
-    "TOTAL VALID USERS:",
-    len(known_names)
-)
-print("============================================")
-
-
-for name in known_names:
-
-    print(
-        "•",
-        name
-    )
-
-
-# ============================================================
-# 7. VERIFICATION SETTINGS
-# ============================================================
-
-FACE_TOLERANCE = 0.48
-
-# Same person must be recognized in
-# at least this many frames.
-MIN_RECOGNITION_COUNT = 5
-
-# Required horizontal head movement.
-MIN_HEAD_MOVEMENT = 40
-
-# Maximum verification time.
-VERIFICATION_TIMEOUT = 15
-
-
-print()
-print("============================================")
-print("VERIFICATION SETTINGS")
-print("============================================")
-
-print(
-    "Face tolerance:",
-    FACE_TOLERANCE
-)
-
-print(
-    "Minimum recognition count:",
-    MIN_RECOGNITION_COUNT
-)
-
-print(
-    "Minimum head movement:",
-    MIN_HEAD_MOVEMENT
-)
-
-print(
-    "Verification timeout:",
-    VERIFICATION_TIMEOUT,
-    "seconds"
-)
-
-
-# ============================================================
-# 8. BROWSER WEBCAM VIDEO CAPTURE
-# ============================================================
-
-def capture_webcam_video(
-    filename='verification.webm',
-    duration=8
-):
-
-
-    javascript_code = f"""
-    async function recordFaceVerification() {{
-
-        const container =
-            document.createElement('div');
-
-
-        // Title
-        const title =
-            document.createElement('h3');
-
-        title.innerText =
-            'Face Verification';
-
-
-        container.appendChild(
-            title
-        );
-
-
-        // Instructions
-        const instruction =
-            document.createElement('p');
-
-        instruction.innerText =
-            'Look at the camera and slowly move your head LEFT and RIGHT.';
-
-
-        container.appendChild(
-            instruction
-        );
-
-
-        // Video
-        const video =
-            document.createElement('video');
-
-
-        video.style.width =
-            '640px';
-
-        video.style.height =
-            '480px';
-
-        video.autoplay = true;
-
-
-        container.appendChild(
-            video
-        );
-
-
-        // Start button
-        const startButton =
-            document.createElement('button');
-
-
-        startButton.innerText =
-            'Start Verification';
-
-
-        startButton.style.fontSize =
-            '18px';
-
-
-        startButton.style.padding =
-            '10px';
-
-
-        container.appendChild(
-            startButton
-        );
-
-
-        document.body.appendChild(
-            container
-        );
-
-
-        // Camera permission
-        const stream =
-            await navigator.mediaDevices.getUserMedia({{
-                video: {{
-                    width: {{ideal: 640}},
-                    height: {{ideal: 480}}
-                }},
-                audio: false
-            }});
-
-
-        video.srcObject =
-            stream;
-
-
-        await video.play();
-
-
-        // Wait for Start button
-        await new Promise(
-            resolve =>
-                startButton.onclick =
-                    resolve
-        );
-
-
-        startButton.disabled =
-            true;
-
-
-        startButton.innerText =
-            'Verification Running...';
-
-
-        // Media recorder
-        const recorder =
-            new MediaRecorder(
-                stream
-            );
-
-
-        let chunks = [];
-
-
-        recorder.ondataavailable =
-            function(event) {{
-
-                if (
-                    event.data.size > 0
-                ) {{
-
-                    chunks.push(
-                        event.data
-                    );
-
-                }}
-
-            }};
-
-
-        recorder.start();
-
-
-        // Record
-        await new Promise(
-            resolve =>
-                setTimeout(
-                    resolve,
-                    {duration * 1000}
-                )
-        );
-
-
-        recorder.stop();
-
-
-        await new Promise(
-            resolve =>
-                recorder.onstop =
-                    resolve
-        );
-
-
-        // Stop camera
-        stream
-            .getTracks()
-            .forEach(
-                track =>
-                    track.stop()
-            );
-
-
-        // Remove UI
-        container.remove();
-
-
-        // Create video blob
-        const blob =
-            new Blob(
-                chunks,
-                {{
-                    type:
-                        'video/webm'
-                }}
-            );
-
-
-        // Convert to Base64
-        const reader =
-            new FileReader();
-
-
-        return await new Promise(
-            resolve => {{
-
-                reader.onloadend =
-                    function() {{
-
-                        resolve(
-                            reader.result
-                        );
-
-                    }};
-
-
-                reader.readAsDataURL(
-                    blob
-                );
-
-            }}
-        );
-
-    }}
-
-
-    recordFaceVerification();
-    """
-
-
-    display(
-        Javascript(
-            javascript_code
-        )
-    )
-
-
-    # Get video from browser
-    data = eval_js(
-        "recordFaceVerification()"
-    )
-
-
-    # Decode Base64
-    binary = base64.b64decode(
-        data.split(',')[1]
-    )
-
-
-    # Save video
-    with open(
-        filename,
-        'wb'
-    ) as f:
-
-        f.write(
-            binary
-        )
-
-
-    return filename
-
-
-print()
-print(
-    "✅ Webcam capture function ready."
-)
-
-
-# ============================================================
-# 9. FACE VERIFICATION FOR A SINGLE FRAME
-# ============================================================
-
-def verify_face_frame(
-    frame,
+# 10. PROCESS VIDEO
+#     FACE RECOGNITION + CONSISTENCY + LIVENESS
+
+def process_verification_video(
+    video_path,
     known_encodings,
     known_names
 ):
 
 
-    # Convert BGR -> RGB
-    rgb = cv2.cvtColor(
-        frame,
-        cv2.COLOR_BGR2RGB
+    cap = cv2.VideoCapture(
+        video_path
     )
 
 
-    # Detect faces
-    face_locations = (
-        face_recognition.face_locations(
-            rgb
+    if not cap.isOpened():
+
+        print(
+            "❌ Cannot open video."
         )
+
+        return None
+
+
+    recognized_names = []
+
+    face_distances = []
+
+    x_positions = []
+
+    frame_count = 0
+
+
+    print()
+    print("============================================")
+    print("PROCESSING VERIFICATION")
+    print("============================================")
+    print()
+
+
+    while True:
+
+        ret, frame = cap.read()
+
+
+        if not ret:
+
+            break
+
+
+        frame_count += 1
+
+
+        # Process every 3rd frame
+        if frame_count % 3 != 0:
+
+            continue
+
+
+        name, distance, location = (
+            verify_face_frame(
+                frame,
+                known_encodings,
+                known_names
+            )
+        )
+
+
+        # ----------------------------------------
+        # MULTIPLE FACES
+        # ----------------------------------------
+
+        if name == "MULTIPLE":
+
+            print(
+                "❌ Multiple faces detected."
+            )
+
+            cap.release()
+
+            return None
+
+
+        # ----------------------------------------
+        # UNKNOWN FACE
+        # ----------------------------------------
+
+        if name == "UNKNOWN":
+
+            continue
+
+
+        # ----------------------------------------
+        # NO FACE
+        # ----------------------------------------
+
+        if name is None:
+
+            continue
+
+
+        # ----------------------------------------
+        # RECOGNIZED USER
+        # ----------------------------------------
+
+        recognized_names.append(
+            name
+        )
+
+
+        if distance is not None:
+
+            face_distances.append(
+                distance
+            )
+
+
+        # ----------------------------------------
+        # HEAD POSITION
+        # ----------------------------------------
+
+        if location is not None:
+
+            top, right, bottom, left = (
+                location
+            )
+
+
+            center_x = (
+                left + right
+            ) / 2
+
+
+            x_positions.append(
+                center_x
+            )
+
+
+    cap.release()
+
+
+    # ========================================================
+    # CHECK 1: FACE FOUND
+    # ========================================================
+
+    if len(recognized_names) == 0:
+
+        print(
+            "❌ No recognized face."
+        )
+
+        return None
+
+
+    # ========================================================
+    # CHECK 2: MOST COMMON USER
+    # ========================================================
+
+    unique_names, counts = np.unique(
+        recognized_names,
+        return_counts=True
     )
 
 
-    # No face
-    if len(face_locations) == 0:
-
-        return (
-            None,
-            None,
-            None
-        )
-
-
-    # Multiple faces
-    if len(face_locations) > 1:
-
-        return (
-            "MULTIPLE",
-            None,
-            None
-        )
-
-
-    # Encode detected face
-    encodings = (
-        face_recognition.face_encodings(
-            rgb,
-            face_locations
-        )
+    best_index = np.argmax(
+        counts
     )
 
 
-    if len(encodings) == 0:
-
-        return (
-            None,
-            None,
-            None
-        )
-
-
-    face_encoding = encodings[0]
-
-
-    # Compare with known faces
-    distances = (
-        face_recognition.face_distance(
-            known_encodings,
-            face_encoding
-        )
-    )
-
-
-    if len(distances) == 0:
-
-        return (
-            "UNKNOWN",
-            None,
-            face_locations[0]
-        )
-
-
-    # Find closest face
-    best_index = np.argmin(
-        distances
-    )
-
-
-    best_distance = distances[
+    best_name = unique_names[
         best_index
     ]
 
 
-    # Face matched
-    if best_distance <= FACE_TOLERANCE:
-
-        name = known_names[
-            best_index
-        ]
+    recognition_count = counts[
+        best_index
+    ]
 
 
-        return (
-            name,
-            best_distance,
-            face_locations[0]
+    print(
+        "Recognized user:",
+        best_name
+    )
+
+
+    print(
+        "Recognition count:",
+        recognition_count
+    )
+
+
+    # ========================================================
+    # CHECK 3: RECOGNITION CONSISTENCY
+    # ========================================================
+
+    if (
+        recognition_count
+        <
+        MIN_RECOGNITION_COUNT
+    ):
+
+        print(
+            "❌ Recognition consistency failed."
         )
 
+        return None
+
+
+    # ========================================================
+    # CHECK 4: FACE DISTANCE
+    # ========================================================
+
+    if len(face_distances) > 0:
+
+        average_distance = np.mean(
+            face_distances
+        )
+
+
+        best_distance = np.min(
+            face_distances
+        )
+
+
+        print(
+            f"Average face distance: "
+            f"{average_distance:.4f}"
+        )
+
+
+        print(
+            f"Best face distance: "
+            f"{best_distance:.4f}"
+        )
+
+
+        if (
+            average_distance
+            >
+            FACE_TOLERANCE
+        ):
+
+            print(
+                "❌ Face distance check failed."
+            )
+
+            return None
+
+
+    # ========================================================
+    # CHECK 5: HEAD MOVEMENT / LIVENESS
+    # ========================================================
+
+    if len(x_positions) < 5:
+
+        print(
+            "❌ Not enough movement data."
+        )
+
+        return None
+
+
+    horizontal_movement = (
+        max(x_positions)
+        -
+        min(x_positions)
+    )
+
+
+    print(
+        f"Horizontal movement: "
+        f"{horizontal_movement:.2f}"
+    )
+
+
+    if (
+        horizontal_movement
+        <
+        MIN_HEAD_MOVEMENT
+    ):
+
+        print()
+        print(
+            "============================================"
+        )
+        print(
+            "❌ LIVENESS FAILED"
+        )
+        print(
+            "============================================"
+        )
+        print()
+        print(
+            "Please move your head LEFT and RIGHT."
+        )
+
+        return None
+
+
+    # ========================================================
+    # ALL CHECKS PASSED
+    # ========================================================
+
+    print()
+    print(
+        "============================================"
+    )
+    print(
+        "✅ FACE VERIFICATION PASSED"
+    )
+    print(
+        "============================================"
+    )
+
+
+    print(
+        "User:",
+        best_name
+    )
+
+
+    print(
+        "Recognition:",
+        "PASSED"
+    )
+
+
+    print(
+        "Liveness:",
+        "PASSED"
+    )
+
+
+    return best_name
+
+# 11. ATTENDANCE FUNCTIONS
+# ============================================================
+
+def already_marked_today(name):
+
+
+    today = datetime.now().strftime(
+        '%Y-%m-%d'
+    )
+
+
+    if not os.path.exists(
+        ATTENDANCE_FILE
+    ):
+
+        return False
+
+
+    with open(
+        ATTENDANCE_FILE,
+        'r',
+        newline=''
+    ) as f:
+
+
+        reader = csv.reader(f)
+
+
+        # Skip header
+        next(
+            reader,
+            None
+        )
+
+
+        for row in reader:
+
+            if (
+                len(row) >= 2
+                and
+                row[0] == name
+                and
+                row[1] == today
+            ):
+
+                return True
+
+
+    return False
+
+
+
+def mark_attendance(name):
+
+
+    # Already marked
+    if already_marked_today(
+        name
+    ):
+
+        print()
+        print(
+            "============================================"
+        )
+
+        print(
+            f"⚠️ {name} already marked today."
+        )
+
+        print(
+            "============================================"
+        )
+
+        return
+
+
+    now = datetime.now()
+
+
+    with open(
+        ATTENDANCE_FILE,
+        'a',
+        newline=''
+    ) as f:
+
+
+        writer = csv.writer(
+            f
+        )
+
+
+        writer.writerow([
+            name,
+            now.strftime(
+                '%Y-%m-%d'
+            ),
+            now.strftime(
+                '%H:%M:%S'
+            )
+        ])
+
+
+    print()
+    print(
+        "============================================"
+    )
+    print(
+        "✅ ATTENDANCE MARKED"
+    )
+    print(
+        "============================================"
+    )
+
+
+    print(
+        "Student:",
+        name
+    )
+
+
+    print(
+        "Date:",
+        now.strftime(
+            '%Y-%m-%d'
+        )
+    )
+
+
+    print(
+        "Time:",
+        now.strftime(
+            '%H:%M:%S'
+        )
+    )
+
+
+# ============================================================
+# 12. START VERIFICATION
+# ============================================================
+
+if len(known_names) == 0:
+
+    print()
+    print(
+        "❌ No valid students found."
+    )
+
+    print(
+        "Upload student images first."
+    )
+
+else:
+
+    print()
+    print(
+        "============================================"
+    )
+    print(
+        "START FACE VERIFICATION"
+    )
+    print(
+        "============================================"
+    )
+
+
+    print()
+    print(
+        "Instructions:"
+    )
+
+
+    print(
+        "1. Only ONE person should be visible."
+    )
+
+
+    print(
+        "2. Look directly at the camera."
+    )
+
+
+    print(
+        "3. Slowly move your head LEFT."
+    )
+
+
+    print(
+        "4. Slowly move your head RIGHT."
+    )
+
+
+    print(
+        "5. Keep your face visible."
+    )
+
+
+    print()
+
+
+    # Capture webcam video
+    video_path = capture_webcam_video(
+        filename='verification.webm',
+        duration=8
+    )
+
+
+    print()
+    print(
+        "✅ Webcam video captured."
+    )
+
+
+# ============================================================
+# 13. RUN VERIFICATION
+# ============================================================
+
+if len(known_names) > 0:
+
+    verified_user = (
+        process_verification_video(
+            video_path,
+            known_encodings,
+            known_names
+        )
+    )
+
+
+    print()
+
+
+    if verified_user is not None:
+
+        print(
+            "============================================"
+        )
+
+        print(
+            "🎉 VERIFIED"
+        )
+
+        print(
+            "Student:",
+            verified_user
+        )
+
+        print(
+            "============================================"
+
+
+        )
+
+    else:
+
+        print(
+            "============================================"
+        )
+
+        print(
+            "❌ VERIFICATION FAILED"
+        )
+
+        print(
+            "Attendance will NOT be marked."
+        )
+
+        print(
+            "============================================"
+
+
+        )
+
+
+# ============================================================
+# 14. MARK ATTENDANCE
+# ============================================================
+
+if (
+    len(known_names) > 0
+    and
+    verified_user is not None
+):
+
+    mark_attendance(
+        verified_user
+    )
+
+else:
+
+    print()
+    print(
+        "❌ Attendance NOT marked."
+    )
+
+
+# ============================================================
+# 15. SHOW ATTENDANCE
+# ============================================================
+
+print()
+print(
+    "============================================"
+)
+print(
+    "ATTENDANCE RECORD"
+)
+print(
+    "============================================"
+)
+
+
+if os.path.exists(
+    ATTENDANCE_FILE
+):
+
+    attendance_df = pd.read_csv(
+        ATTENDANCE_FILE
+    )
+
+
+    display(
+        attendance_df
+    )
+
+
+else:
 
     # Face not matched
     return (
