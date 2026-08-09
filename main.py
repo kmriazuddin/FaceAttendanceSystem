@@ -835,6 +835,41 @@ if os.path.exists(
 
 else:
 
+    # Face not matched
+    return (
+        "UNKNOWN",
+        best_distance,
+        face_locations[0]
+    )
+
+# ============================================================
+# 16. DOWNLOAD ATTENDANCE CSV
+# ============================================================
+
+import os
+
+print()
+print(
+    "============================================"
+)
+print(
+    "DOWNLOAD ATTENDANCE"
+)
+print(
+    "============================================"
+)
+
+
+if os.path.exists(
+    ATTENDANCE_FILE
+):
+
+    files.download(
+        ATTENDANCE_FILE
+    )
+
+else:
+
     print(
-        "No attendance records found."
+        "Attendance file not found."
     )
