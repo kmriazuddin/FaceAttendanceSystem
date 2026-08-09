@@ -746,3 +746,35 @@ def verify_face_frame(
         best_distance,
         face_locations[0]
     )
+
+# ============================================================
+# 16. DOWNLOAD ATTENDANCE CSV
+# ============================================================
+
+import os
+
+print()
+print(
+    "============================================"
+)
+print(
+    "DOWNLOAD ATTENDANCE"
+)
+print(
+    "============================================"
+)
+
+
+if os.path.exists(
+    ATTENDANCE_FILE
+):
+
+    files.download(
+        ATTENDANCE_FILE
+    )
+
+else:
+
+    print(
+        "Attendance file not found."
+    )
